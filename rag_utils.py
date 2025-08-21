@@ -13,7 +13,7 @@ from groq import Groq
 load_dotenv()  # loads .env
 
 # ---- Config ----
-CHROMA_PATH = os.getenv("CHROMA_PATH", "./chroma_db")
+CHROMA_PATH = os.getenv("CHROMA_PATH", "/tmp/chroma_db")
 COLLECTION_NAME = os.getenv("COLLECTION_NAME", "support_knowledge")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")  # swap to llama-3.3-70b-versatile if desired
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
