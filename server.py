@@ -1,5 +1,3 @@
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from fastapi import FastAPI
@@ -32,6 +30,3 @@ async def chat(req: ChatRequest):
     result = rag_answer(req.query, k=req.top_k)
     return result
 
-@app.get("/")
-async def serve_ui():
-    return FileResponse("index.html")
