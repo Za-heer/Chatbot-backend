@@ -10,7 +10,6 @@ from rag_utils import rag_answer, get_chroma
 load_dotenv()
 
 app = FastAPI(title="Groq Llama3 RAG Bot")
-app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # or ["https://your-frontend.vercel.app"]
