@@ -1,0 +1,5 @@
+id,category,question,answer
+1,account,How can I reset my password?,Go to Settings > Security > Reset Password. You will receive an email with a reset link.
+2,orders,Where is my order?,You can track your order from the Orders page. Typical delivery time is 3-5 business days.
+3,refunds,How do I request a refund?,Open the order detail and click "Request a Refund". Refunds are processed in 5-7 days.
+4,support,How to contact support?,Email support@example.com or use in-app chat (9am–6pm).
