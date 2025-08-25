@@ -10,7 +10,7 @@ load_dotenv()
 app = FastAPI(title="Groq Llama3 RAG Bot")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], 
+    allow_origins=["https://chatbot-frontend-wheat.vercel.app/"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
