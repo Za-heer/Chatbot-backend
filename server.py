@@ -1,16 +1,16 @@
-from fastapi.middleware.cors import CORSMiddleware
-import os
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from rag_utils import rag_answer, get_chroma
+import os
 
 load_dotenv()
 
 app = FastAPI(title="Groq Llama3 RAG Bot")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or ["https://your-frontend.vercel.app"]
+    allow_origins=["http://localhost:5173"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,4 +29,3 @@ def _startup():
 async def chat(req: ChatRequest):
     result = rag_answer(req.query, k=req.top_k)
     return result
-
