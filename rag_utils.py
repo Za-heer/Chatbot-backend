@@ -21,6 +21,12 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 # ---- Embedding model ----
 _EMBED_MODEL_NAME = "nomic-ai/nomic-embed-text-v1.5"
 
+_embedder = SentenceTransformer(
+    _EMBED_MODEL_NAME,
+    trust_remote_code=True,
+    revision="main"
+)
+
 @dataclass
 class RetrievedChunk:
     text: str
@@ -28,7 +34,7 @@ class RetrievedChunk:
     id: str
 
 def get_embedder():
-    return SentenceTransformer(_EMBED_MODEL_NAME, trust_remote_code=True)
+    return _embedder
 
 def get_chroma():
     # Persistent local DB
