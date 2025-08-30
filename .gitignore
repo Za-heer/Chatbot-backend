@@ -1,25 +1,38 @@
-# Virtual environment
-.venv/
-
-# Python cache
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.sqlite3
+*.db
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints/
+# Virtual Environment
+venv/
+.env/
+.venv/
+*.egg-info/
 
-# Environment variables
+# Environment & Config
 .env
+.env.local
+*.secret
+*.token
 
-# OS files
+# Cache / Logs
+*.log
+.cache/
+tmp/
+hf_cache/
+huggingface/
+.cache_dir/
+
+# ChromaDB Local Storage
+chromadb/
+chroma/
+data/
+storage/
+index/
+
+# OS Specific
 .DS_Store
 Thumbs.db
-
-# IDE settings
-.vscode/
-.idea/
-
-# ChromaDB local storage
-chroma_db/

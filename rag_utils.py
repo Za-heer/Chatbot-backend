@@ -1,11 +1,10 @@
 import os
 import re
-import uuid
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
-
 import chromadb
 from chromadb.config import Settings
+from pinecone import Pinecone
 from sentence_transformers import SentenceTransformer
 from dotenv import load_dotenv
 from groq import Groq
@@ -13,18 +12,22 @@ from groq import Groq
 load_dotenv()  # loads .env
 
 # ---- Config ----
-CHROMA_PATH = os.getenv("CHROMA_PATH", "/chroma_db")
+CHROMA_PATH = os.getenv("CHROMA_PATH", "./chroma_db")
 COLLECTION_NAME = os.getenv("COLLECTION_NAME", "support_knowledge")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")  # swap to llama-3.3-70b-versatile if desired
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")  # swap to llama-3.3-70b-versatile if desired
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+USE_EXTERNAL_DB = os.getenv("USE_EXTERNAL_DB", "false").lower() == "true"
 
 # ---- Embedding model ----
-# _EMBED_MODEL_NAME = "nomic-ai/nomic-embed-text-v1.5"
-_EMBED_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+_EMBED_MODEL_NAME = "nomic-ai/nomic-embed-text-v1.5"
+# _EMBED_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+
+cache_dir = os.getenv("HF_HOME", "/tmp/hf_cache")
 
 _embedder = SentenceTransformer(
     _EMBED_MODEL_NAME,
-    # trust_remote_code=True,    
+    trust_remote_code = True,
+    cache_folder=cache_dir,
     revision="main"
 )
 
@@ -38,11 +41,26 @@ def get_embedder():
     return _embedder
 
 def get_chroma():
-    # Persistent local DB
-    client = chromadb.PersistentClient(path=CHROMA_PATH)
-    # If you wanted Chroma to auto-embed, you could pass an embedding function in collection creation.
-    col = client.get_or_create_collection(name=COLLECTION_NAME)
-    return client, col
+    use_external = os.getenv("USE_EXTERNAL_DB", "false").lower() == "true"
+
+    if use_external:
+        # --- Pinecone connection for deployment ---
+        api_key = os.getenv("EXTERNAL_DB_API_KEY")
+        index_name = os.getenv("PINECONE_INDEX_NAME", "my-index")
+
+        if not api_key:
+            raise ValueError("❌ Pinecone API key not found in .env")
+
+        print(f"🌐 Connecting to Pinecone index: {index_name}")
+        pc = Pinecone(api_key=api_key)
+        index = pc.Index(index_name)
+        return pc, index
+    else:
+        # --- Local ChromaDB ---
+        print("💾 Using local ChromaDB")
+        client = chromadb.PersistentClient(path=CHROMA_PATH)
+        col = client.get_or_create_collection(name=COLLECTION_NAME)
+        return client, col
 
 def simple_chunk(text: str, max_words: int = 220) -> List[str]:
     # Clean and chunk by words; good enough for FAQs
@@ -54,9 +72,6 @@ def simple_chunk(text: str, max_words: int = 220) -> List[str]:
     return [c for c in chunks if c]
 
 def upsert_documents(docs: List[Dict[str, Any]]):
-    """
-    docs: list of dicts with keys: id(str), text(str), metadata(dict)
-    """
     embedder = get_embedder()
     _, collection = get_chroma()
 
