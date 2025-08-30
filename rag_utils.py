@@ -44,7 +44,7 @@ def get_chroma():
     use_external = os.getenv("USE_EXTERNAL_DB", "false").lower() == "true"
 
     if use_external:
-        # --- Pinecone connection for deployment ---
+        # --- Pinecone connection ---
         api_key = os.getenv("EXTERNAL_DB_API_KEY")
         index_name = os.getenv("PINECONE_INDEX_NAME", "my-index")
 
@@ -54,45 +54,65 @@ def get_chroma():
         print(f"🌐 Connecting to Pinecone index: {index_name}")
         pc = Pinecone(api_key=api_key)
         index = pc.Index(index_name)
-        return pc, index
+        return "pinecone", index
     else:
         # --- Local ChromaDB ---
         print("💾 Using local ChromaDB")
         client = chromadb.PersistentClient(path=CHROMA_PATH)
         col = client.get_or_create_collection(name=COLLECTION_NAME)
-        return client, col
+        return "chroma", col
 
-def simple_chunk(text: str, max_words: int = 220) -> List[str]:
-    # Clean and chunk by words; good enough for FAQs
-    text = re.sub(r"\s+", " ", text).strip()
-    words = text.split(" ")
-    chunks = []
-    for i in range(0, len(words), max_words):
-        chunks.append(" ".join(words[i:i+max_words]))
+
+def simple_chunk(text: str, max_words: int = 220) -> List[str]: # Clean and chunk by words; good enough for FAQs 
+    text = re.sub(r"\s+", " ", text).strip() 
+    words = text.split(" ") 
+    chunks = [] 
+    for i in range(0, len(words), max_words): 
+        chunks.append(" ".join(words[i:i+max_words])) 
     return [c for c in chunks if c]
-
+# ----------------- Upsert Docs -----------------
 def upsert_documents(docs: List[Dict[str, Any]]):
     embedder = get_embedder()
-    _, collection = get_chroma()
+    db_type, collection = get_chroma()
 
     texts = [d["text"] for d in docs]
     ids = [d["id"] for d in docs]
     metadatas = [d.get("metadata", {}) for d in docs]
-
     vectors = embedder.encode(texts, convert_to_numpy=True).tolist()
-    # Add/update
-    # If ids exist, Chroma will append new entries unless you manage duplicates yourself.
-    collection.add(documents=texts, embeddings=vectors, metadatas=metadatas, ids=ids)
 
+    if db_type == "chroma":
+        collection.add(documents=texts, embeddings=vectors, metadatas=metadatas, ids=ids)
+    else:  # Pinecone
+        pinecone_vectors = []
+        for i, v in enumerate(vectors):
+            pinecone_vectors.append({
+                "id": ids[i],
+                "values": v,
+                "metadata": {"text": texts[i], **metadatas[i]}
+            })
+        collection.upsert(vectors=pinecone_vectors)
+
+# ----------------- Query Similar -----------------
 def query_similar(query: str, k: int = 4) -> List[RetrievedChunk]:
     embedder = get_embedder()
-    _, collection = get_chroma()
-    q_vec = embedder.encode([query], convert_to_numpy=True).tolist()
-    res = collection.query(query_embeddings=q_vec, n_results=k)
-    # Build results
+    db_type, collection = get_chroma()
+    q_vec = embedder.encode([query], convert_to_numpy=True).tolist()[0]
+
     out = []
-    for docs, metas, ids in zip(res.get("documents",[[]])[0], res.get("metadatas",[[]])[0], res.get("ids",[[]])[0]):
-        out.append(RetrievedChunk(text=docs, metadata=metas or {}, id=ids))
+    if db_type == "chroma":
+        res = collection.query(query_embeddings=[q_vec], n_results=k)
+        for docs, metas, ids in zip(res.get("documents",[[]])[0],
+                                    res.get("metadatas",[[]])[0],
+                                    res.get("ids",[[]])[0]):
+            out.append(RetrievedChunk(text=docs, metadata=metas or {}, id=ids))
+    else:  # Pinecone
+        res = collection.query(vector=q_vec, top_k=k, include_metadata=True)
+        for match in res["matches"]:
+            out.append(RetrievedChunk(
+                text=match["metadata"].get("text", ""),
+                metadata=match["metadata"],
+                id=match["id"]
+            ))
     return out
 
 def build_system_prompt():

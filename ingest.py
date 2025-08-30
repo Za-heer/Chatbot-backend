@@ -21,7 +21,8 @@ def main():
 
     # show count
     _, col = get_chroma()
-    print("✅ Ingested. Total docs in collection:", col.count())
+    stats = col.describe_index_stats()
+    print("✅ Ingested. Total vectors in index:", stats["total_vector_count"])
 
 if __name__ == "__main__":
     main()

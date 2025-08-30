@@ -26,7 +26,8 @@ class ChatRequest(BaseModel):
 def _startup():
     # Warm up Chroma (and optionally print stats)
     _, col = get_chroma()
-    print(f"Chroma collection loaded. Current count = {col.count()}")
+    stats = col.describe_index_stats()
+    print("✅ Ingested. Total vectors in index:", stats["total_vector_count"])
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
